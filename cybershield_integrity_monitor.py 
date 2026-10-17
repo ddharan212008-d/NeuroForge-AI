@@ -1,0 +1,146 @@
+
+import hashlib
+import json
+from pathlib import Path
+from datetime import datetime
+
+BASE_DIR = Path(__file__).resolve().parent
+DATABASE = BASE_DIR / "integrity_baseline.json"
+
+
+def calculate_hash(file_path):
+    sha256 = hashlib.sha256()
+
+    with file_path.open("rb") as file:
+        for chunk in iter(lambda: file.read(4096), b""):
+            sha256.update(chunk)
+
+    return sha256.hexdigest()
+
+
+def load_baseline():
+    if not DATABASE.exists():
+        return {}
+
+    try:
+        return json.loads(DATABASE.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        print("Could not read baseline database.")
+        return {}
+
+
+def save_baseline(data):
+    DATABASE.write_text(
+        json.dumps(data, indent=4),
+        encoding="utf-8"
+    )
+
+
+def scan_folder(folder):
+    folder = Path(folder).expanduser().resolve()
+
+    if not folder.is_dir():
+        print("Folder not found.")
+        return None
+
+    results = {}
+
+    for path in folder.rglob("*"):
+        if not path.is_file():
+            continue
+
+        try:
+            results[str(path)] = calculate_hash(path)
+        except OSError:
+            print(f"Skipped unreadable file: {path.name}")
+
+    return results
+
+
+def create_baseline():
+    folder = input("Folder path to monitor: ").strip()
+
+    if not folder:
+        print("Please enter a folder path.")
+        return
+
+    results = scan_folder(folder)
+
+    if results is None:
+        return
+
+    save_baseline(results)
+    print(f"Baseline saved for {len(results)} files.")
+    print("Keep this baseline safe for future comparisons.")
+
+
+def check_changes():
+    baseline = load_baseline()
+
+    if not baseline:
+        print("No baseline found. Choose option 1 first.")
+        return
+
+    print("Checking saved files...")
+
+    missing = []
+    changed = []
+    unchanged = 0
+
+    for name, old_hash in baseline.items():
+        path = Path(name)
+
+        if not path.exists():
+            missing.append(name)
+            continue
+
+        try:
+            new_hash = calculate_hash(path)
+        except OSError:
+            print(f"Could not read: {path.name}")
+            continue
+
+        if new_hash != old_hash:
+            changed.append(name)
+        else:
+            unchanged += 1
+
+    print("\n--- INTEGRITY REPORT ---")
+    print("Unchanged files:", unchanged)
+    print("Changed files:", len(changed))
+    print("Missing files:", len(missing))
+
+    for name in changed:
+        print("[CHANGED]", name)
+
+    for name in missing:
+        print("[MISSING]", name)
+
+    if not changed and not missing:
+        print("No changes detected in monitored files.")
+
+    print("Checked at:", datetime.now().isoformat(timespec="seconds"))
+
+
+def main():
+    while True:
+        print("\n=== CYBERSHIELD ===")
+        print("1. Create or refresh baseline")
+        print("2. Check for changes")
+        print("3. Exit")
+
+        choice = input("Choose: ").strip()
+
+        if choice == "1":
+            create_baseline()
+        elif choice == "2":
+            check_changes()
+        elif choice == "3":
+            print("Monitor closed.")
+            break
+        else:
+            print("Choose 1, 2, or 3.")
+
+
+if __name__ == "__main__":
+    main()
