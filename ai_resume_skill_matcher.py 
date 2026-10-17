@@ -1,0 +1,80 @@
+
+import re
+from collections import Counter
+
+SKILLS = {
+    "python": ["python"],
+    "java": ["java"],
+    "sql": ["sql", "mysql", "postgresql"],
+    "machine learning": ["machine learning", "scikit-learn", "sklearn"],
+    "deep learning": ["deep learning", "pytorch", "tensorflow"],
+    "data analysis": ["data analysis", "pandas", "numpy"],
+    "web development": ["html", "css", "javascript", "react"],
+    "git and github": ["git", "github"],
+    "communication": ["communication", "teamwork"],
+    "problem solving": ["problem solving", "data structures", "algorithms"]
+}
+
+
+def find_skills(text):
+    text = text.lower()
+    found = set()
+
+    for skill, keywords in SKILLS.items():
+        for keyword in keywords:
+            pattern = r"(?<!\w)" + re.escape(keyword) + r"(?!\w)"
+            if re.search(pattern, text):
+                found.add(skill)
+                break
+
+    return found
+
+
+def analyze_resume():
+    print("\n=== AI RESUME SKILL MATCHER ===")
+    print("Note: This is a keyword-based analyzer, not a trained AI model.")
+
+    resume = input("\nPaste resume text: ").strip()
+    job = input("\nPaste job description: ").strip()
+
+    if not resume or not job:
+        print("Resume and job description cannot be empty.")
+        return
+
+    resume_skills = find_skills(resume)
+    job_skills = find_skills(job)
+
+    if not job_skills:
+        print("No supported skills found in the job description.")
+        print("Try including skills such as Python, SQL, or Git.")
+        return
+
+    matching = resume_skills & job_skills
+    missing = job_skills - resume_skills
+    score = len(matching) / len(job_skills) * 100
+
+    print("\n--- ANALYSIS REPORT ---")
+    print(f"Skills found in resume: {len(resume_skills)}")
+    print(f"Skills requested by job: {len(job_skills)}")
+    print(f"Skill match score: {score:.1f}%")
+
+    print("\nMatching skills:")
+    for skill in sorted(matching):
+        print(" +", skill)
+
+    print("\nSkills to consider learning:")
+    for skill in sorted(missing):
+        print(" -", skill)
+
+    if missing:
+        print("\nSuggestion: Learn and practise the missing skills.")
+        print("Add them to your resume only when you genuinely have them.")
+    else:
+        print("\nAll detected job skills appear in your resume!")
+
+    print("\nReminder: This score measures keywords only.")
+    print("It does not predict hiring success.")
+
+
+if __name__ == "__main__":
+    analyze_resume()
