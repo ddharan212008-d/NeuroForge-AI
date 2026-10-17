@@ -1,8 +1,8 @@
+
 import re
 import csv
 from collections import Counter
 from pathlib import Path
-from datetime import datetime
 
 REPORT_FILE = Path("logsense_report.csv")
 
@@ -13,11 +13,9 @@ LEVEL_PATTERN = re.compile(
 
 
 def classify_line(line):
-    """Return a normalized log level, or UNKNOWN if none is found."""
     match = LEVEL_PATTERN.search(line)
     if not match:
         return "UNKNOWN"
-
     level = match.group(1).upper()
     if level == "WARN":
         return "WARNING"
@@ -27,14 +25,12 @@ def classify_line(line):
 
 
 def normalize_message(line):
-    """Reduce similar lines to a common message for frequency analysis."""
-    without_timestamp = re.sub(
+    line = re.sub(
         r"^\s*\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:,\d+)?\s*",
-        "",
-        line
+        "", line
     )
-    without_level = LEVEL_PATTERN.sub("", without_timestamp, count=1)
-    return re.sub(r"\s+", " ", without_level).strip(" :-")
+    line = LEVEL_PATTERN.sub("", line, count=1)
+    return re.sub(r"\s+", " ", line).strip(" :-")
 
 
 def analyze_lines(lines):
@@ -42,20 +38,20 @@ def analyze_lines(lines):
     frequent_messages = Counter()
     records = []
 
-    for line_number, raw_line in enumerate(lines, start=1):
-        line = raw_line.rstrip("\n")
+    for number, raw in enumerate(lines, start=1):
+        line = raw.rstrip("\n")
         if not line.strip():
             continue
 
         level = classify_line(line)
         counts[level] += 1
 
-        if level in {"ERROR", "CRITICAL"}:
-            message = normalize_message(line) or "(empty error message)"
-            frequent_messages[message] += 1
+        if level in ("ERROR", "CRITICAL"):
+            frequent_messages[normalize_message(line) or
+                              "(empty error message)"] += 1
 
         records.append({
-            "line_number": line_number,
+            "line_number": number,
             "level": level,
             "message": line.strip()
         })
@@ -67,35 +63,40 @@ def print_report(counts, frequent_messages, records):
     print("\n========== LOGSENSE REPORT ==========")
     print(f"Analyzed non-empty lines: {len(records)}")
 
-    for level in ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "UNKNOWN"]:
+    for level in ["CRITICAL", "ERROR", "WARNING",
+                  "INFO", "DEBUG", "UNKNOWN"]:
         print(f"{level:10}: {counts.get(level, 0)}")
 
     print("\nMost frequent error messages:")
-    if not frequent_messages:
-        print("No ERROR or CRITICAL entries found.")
-    else:
+    if frequent_messages:
         for message, count in frequent_messages.most_common(5):
             print(f"{count} occurrence(s): {message}")
+    else:
+        print("No ERROR or CRITICAL entries found.")
 
     print("\nRecent error entries:")
-    errors = [r for r in records if r["level"] in {"ERROR", "CRITICAL"}]
-    if not errors:
-        print("No errors to display.")
+    errors = [r for r in records
+              if r["level"] in ("ERROR", "CRITICAL")]
+
+    if errors:
+        for r in errors[-5:]:
+            print(f"Line {r['line_number']}: {r['message']}")
     else:
-        for record in errors[-5:]:
-            print(f"Line {record['line_number']}: {record['message']}")
+        print("No errors to display.")
 
 
-def export_report(counts, records):
-    with REPORT_FILE.open("w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(
-            file,
-            fieldnames=["line_number", "level", "message"]
-        )
-        writer.writeheader()
-        writer.writerows(records)
-
-    print(f"\nDetailed report saved to: {REPORT_FILE.resolve()}")
+def export_report(records):
+    try:
+        with REPORT_FILE.open("w", newline="", encoding="utf-8") as file:
+            writer = csv.DictWriter(
+                file,
+                fieldnames=["line_number", "level", "message"]
+            )
+            writer.writeheader()
+            writer.writerows(records)
+        print(f"\nCSV report saved: {REPORT_FILE.resolve()}")
+    except OSError as error:
+        print(f"\nCould not save CSV report: {error}")
 
 
 def analyze_file(path_text):
@@ -114,19 +115,42 @@ def analyze_file(path_text):
 
     counts, frequent_messages, records = analyze_lines(lines)
     print_report(counts, frequent_messages, records)
-    export_report(counts, records)
+    export_report(records)
 
 
 def main():
-    print("LogSense — Smart Log Analyzer")
-    print("Use a log file you own or have permission to analyze.")
-    path = input("Enter the log file path: ").strip().strip('"')
+    print("=" * 38)
+    print("   LogSense - Smart Log Analyzer")
+    print("=" * 38)
+    print("1. Analyze a log file")
+    print("2. Run demo analysis")
 
-    if not path:
-        print("No file path entered.")
-        return
+    choice = input("\nChoose option (1/2): ").strip()
 
-    analyze_file(path)
+    if choice == "2":
+        sample_logs = [
+            "INFO: Application started",
+            "WARNING: Slow response detected",
+            "ERROR: Database connection failed",
+            "INFO: Application restarted",
+            "ERROR: Database connection failed",
+            "CRITICAL: Service unavailable",
+            "DEBUG: Checking configuration",
+            "ERROR: File not found"
+        ]
+
+        counts, frequent_messages, records = analyze_lines(sample_logs)
+        print_report(counts, frequent_messages, records)
+        export_report(records)
+
+    elif choice == "1":
+        path = input("Enter log file path: ").strip().strip('"')
+        if path:
+            analyze_file(path)
+        else:
+            print("No file path entered.")
+    else:
+        print("Invalid choice. Select 1 or 2.")
 
 
 if __name__ == "__main__":
