@@ -1,18 +1,17 @@
 
 import re
-from collections import Counter
 
 SKILLS = {
-    "python": ["python"],
-    "java": ["java"],
-    "sql": ["sql", "mysql", "postgresql"],
-    "machine learning": ["machine learning", "scikit-learn", "sklearn"],
-    "deep learning": ["deep learning", "pytorch", "tensorflow"],
-    "data analysis": ["data analysis", "pandas", "numpy"],
-    "web development": ["html", "css", "javascript", "react"],
-    "git and github": ["git", "github"],
-    "communication": ["communication", "teamwork"],
-    "problem solving": ["problem solving", "data structures", "algorithms"]
+    "Python": ["python"],
+    "Java": ["java"],
+    "SQL": ["sql", "mysql", "postgresql"],
+    "Machine Learning": ["machine learning", "scikit-learn", "sklearn"],
+    "Deep Learning": ["deep learning", "pytorch", "tensorflow"],
+    "Data Analysis": ["data analysis", "pandas", "numpy"],
+    "Web Development": ["html", "css", "javascript", "react"],
+    "Git and GitHub": ["git", "github"],
+    "Communication": ["communication", "teamwork"],
+    "Problem Solving": ["problem solving", "data structures", "algorithms"]
 }
 
 
@@ -31,49 +30,61 @@ def find_skills(text):
 
 
 def analyze_resume():
-    print("\n=== AI RESUME SKILL MATCHER ===")
-    print("Note: This is a keyword-based analyzer, not a trained AI model.")
+    print("=" * 35)
+    print("     AI RESUME SKILL MATCHER")
+    print("=" * 35)
+    print("Enter resume and job description below.")
 
     resume = input("\nPaste resume text: ").strip()
     job = input("\nPaste job description: ").strip()
 
     if not resume or not job:
-        print("Resume and job description cannot be empty.")
+        print("\nError: Inputs cannot be empty.")
         return
 
     resume_skills = find_skills(resume)
     job_skills = find_skills(job)
 
     if not job_skills:
-        print("No supported skills found in the job description.")
-        print("Try including skills such as Python, SQL, or Git.")
+        print("\nNo supported skills found in job description.")
+        print("Try Python, SQL, Java, or Machine Learning.")
         return
 
     matching = resume_skills & job_skills
     missing = job_skills - resume_skills
     score = len(matching) / len(job_skills) * 100
 
-    print("\n--- ANALYSIS REPORT ---")
-    print(f"Skills found in resume: {len(resume_skills)}")
-    print(f"Skills requested by job: {len(job_skills)}")
-    print(f"Skill match score: {score:.1f}%")
+    print("\n" + "=" * 35)
+    print("           MATCH REPORT")
+    print("=" * 35)
+    print(f"Resume skills found : {len(resume_skills)}")
+    print(f"Job skills required : {len(job_skills)}")
+    print(f"Skill match score   : {score:.1f}%")
 
-    print("\nMatching skills:")
-    for skill in sorted(matching):
-        print(" +", skill)
-
-    print("\nSkills to consider learning:")
-    for skill in sorted(missing):
-        print(" -", skill)
-
-    if missing:
-        print("\nSuggestion: Learn and practise the missing skills.")
-        print("Add them to your resume only when you genuinely have them.")
+    print("\nMatching Skills:")
+    if matching:
+        for skill in sorted(matching):
+            print("  [+]", skill)
     else:
-        print("\nAll detected job skills appear in your resume!")
+        print("  No matching skills found.")
 
-    print("\nReminder: This score measures keywords only.")
-    print("It does not predict hiring success.")
+    print("\nMissing Skills:")
+    if missing:
+        for skill in sorted(missing):
+            print("  [-]", skill)
+    else:
+        print("  No missing supported skills.")
+
+    print("\nRecommendation:")
+    if score >= 75:
+        print("Good keyword match! Review the job requirements.")
+    elif score >= 40:
+        print("Moderate match. Practise the missing skills.")
+    else:
+        print("Build relevant skills for this job role.")
+
+    print("\nNote: This is keyword-based matching,")
+    print("not a trained AI model or hiring prediction.")
 
 
 if __name__ == "__main__":
